@@ -18,12 +18,12 @@ const lerp = (a, b, x) => {
 		uTime: { value: 0 },
 		uResolution: { value: new Vec2(window.innerWidth, window.innerHeight) },
 		uMouse: { value: mouse },
-		uSphere: { value: new Vec4(1, 1, 6, 1) },
+		uSphere: { value: new Vec4(1, 0, 6, 1) },
 	}
 
 	const onMove = (e) => {
 		mouse.x = (e.pageX / window.innerWidth - 0.5) * 5
-		mouse.y = (e.pageY / window.innerHeight - 0.5) * 5.5
+		mouse.y = (e.pageY / window.innerHeight - 0.5) * 2
 	}
 
 	gl.canvas.addEventListener('mousemove', onMove)
