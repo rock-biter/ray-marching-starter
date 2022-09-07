@@ -21,10 +21,13 @@ const lerp = (a, b, x) => {
 		uSphere: { value: new Vec4(0, 1, 6, 1) },
 	}
 
-	window.addEventListener('mousemove', (e) => {
+	const onMove = (e) => {
 		mouse.x = (e.pageX / window.innerWidth - 0.5) * 4
 		mouse.y = (e.pageY / window.innerHeight - 0.5) * 4
-	})
+	}
+
+	gl.canvas.addEventListener('mousemove', onMove)
+	gl.canvas.addEventListener('touchmove', onMove)
 
 	function resize() {
 		renderer.setSize(window.innerWidth, window.innerHeight)
@@ -117,6 +120,7 @@ const lerp = (a, b, x) => {
           
             }
 
+
             vec3 GetNormal(vec3 p) {
               float d = GetDist(p);
               //trick
@@ -131,6 +135,32 @@ const lerp = (a, b, x) => {
               return normalize(n);
             }
 
+            float softshadow( in vec3 ro, in vec3 rd, float k )
+            {
+
+              float dO = 0.;
+              float res = 1.0;
+              
+              for(int i=0; i< MAX_STEPS ; i++) {
+                  vec3 p = ro + rd * dO;
+                  float dS = GetDist(p);
+
+                  if(dS<SURF_DIST)
+                    return 0.0;
+                  
+                  
+                  dO += dS;
+                  res = min( res, k*dS/dO );
+                
+
+                  
+              
+              }
+              
+              return res;
+
+            }
+
             float GetLight(vec3 p) {
 
               vec3 lightPos = vec3(0,5,6);
@@ -141,12 +171,15 @@ const lerp = (a, b, x) => {
               
               float dif = clamp( dot(n,l), 0., 1. );
               float d = RayMarch(p+n*SURF_DIST*2.,l);
+              // float d = softshadow(p+n*SURF_DIST*2., l, 0.5);
               
-              if(d<length(lightPos-p)) dif *= 0.1;
+              if(d<length(lightPos-p)) dif *= 0.5;
               
               return dif;
           
             }
+
+            
 
             
 
