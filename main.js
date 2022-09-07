@@ -26,8 +26,8 @@ const lerp = (a, b, x) => {
 		mouse.y = (e.pageY / window.innerHeight - 0.5) * 2
 	}
 
-	gl.canvas.addEventListener('mousemove', onMove)
-	gl.canvas.addEventListener('touchmove', onMove)
+	document.body.addEventListener('mousemove', onMove)
+	document.body.addEventListener('touchmove', onMove)
 
 	function resize() {
 		renderer.setSize(window.innerWidth, window.innerHeight)
