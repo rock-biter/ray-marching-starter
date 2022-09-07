@@ -156,13 +156,18 @@ const lerp = (a, b, x) => {
 
               vec2 uv = (gl_FragCoord.xy -0.5*uResolution.xy)/uResolution.y;
 
-              vec3 col = vec3(1);
+              vec3 col = vec3(0.2,0.3,1.);
               vec3 ro = vec3(0,1,0);
               vec3 rd = normalize(vec3(uv.x,uv.y,1));
               float d = RayMarch(ro, rd);
               vec3 p = ro + rd * d;
               float dif = GetLight(p);
-              col = vec3(dif);
+              // col = mix(col, (vec3( sin(p.x * (5. + sin(uTime + p.z*0.2) ) + sin(p.z*0.3) + p.z*2. + uTime*5.) ) * 0.2), 0.5);
+              float pToS = 1. - length( p - uSphere.xyz ) * 0.2;
+              vec3 topCol = vec3(1.,0.2,0.4);
+              col = mix(col, topCol, p.y*0.5);
+              col *= dif;
+              col *= pToS;
 
                 // gl_FragColor.rgb = vec3(0.8, 0.7, 1.0) + 0.3 * cos(vUv.xyx + uTime);
                 gl_FragColor = vec4(col,1.0);
