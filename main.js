@@ -18,12 +18,12 @@ const lerp = (a, b, x) => {
 		uTime: { value: 0 },
 		uResolution: { value: new Vec2(window.innerWidth, window.innerHeight) },
 		uMouse: { value: mouse },
-		uSphere: { value: new Vec4(0, 1, 6, 1) },
+		uSphere: { value: new Vec4(1, 1, 6, 1) },
 	}
 
 	const onMove = (e) => {
-		mouse.x = (e.pageX / window.innerWidth - 0.5) * 4
-		mouse.y = (e.pageY / window.innerHeight - 0.5) * 4
+		mouse.x = (e.pageX / window.innerWidth - 0.5) * 5
+		mouse.y = (e.pageY / window.innerHeight - 0.5) * 5.5
 	}
 
 	gl.canvas.addEventListener('mousemove', onMove)
@@ -96,7 +96,8 @@ const lerp = (a, b, x) => {
               // vec4 sA = vec4(0,1,6,1);
             
               float distA = sdSphere(p-uSphere.xyz, uSphere.w );
-              float planeDist = p.y;
+              float l = length(uSphere.xz - p.xz );
+              float planeDist = p.y + sin( l*5. - uTime*5. )*0.1 ;
               
               float d = sMin(distA, planeDist,1.);
               return d;
@@ -151,9 +152,6 @@ const lerp = (a, b, x) => {
                   
                   dO += dS;
                   res = min( res, k*dS/dO );
-                
-
-                  
               
               }
               
@@ -171,9 +169,10 @@ const lerp = (a, b, x) => {
               
               float dif = clamp( dot(n,l), 0., 1. );
               float d = RayMarch(p+n*SURF_DIST*2.,l);
-              // float d = softshadow(p+n*SURF_DIST*2., l, 0.5);
+              float sha = softshadow(p+n*SURF_DIST*2., l, 8.);
               
-              if(d<length(lightPos-p)) dif *= 0.5;
+              // if(d<length(lightPos-p)) dif *= clamp(0.5,1.,sha);
+              dif *= sha;
               
               return dif;
           
@@ -198,8 +197,9 @@ const lerp = (a, b, x) => {
               // col = mix(col, (vec3( sin(p.x * (5. + sin(uTime + p.z*0.2) ) + sin(p.z*0.3) + p.z*2. + uTime*5.) ) * 0.2), 0.5);
               float pToS = 1. - length( p - uSphere.xyz ) * 0.2;
               vec3 topCol = vec3(1.,0.2,0.4);
-              col = mix(col, topCol, p.y*0.5);
               col *= dif;
+              col = mix(col, topCol, p.y*0.5 + 0.2);
+              col *= dif + 0.15;
               col *= pToS;
 
                 // gl_FragColor.rgb = vec3(0.8, 0.7, 1.0) + 0.3 * cos(vUv.xyx + uTime);
@@ -272,7 +272,7 @@ const lerp = (a, b, x) => {
 		program.uniforms.uTime.value = t * 0.001
 		const x = uniforms.uSphere.value.x
 		const y = uniforms.uSphere.value.y
-		uniforms.uSphere.value.x = lerp(x, mouse.x, 0.05)
+		uniforms.uSphere.value.x = lerp(x, 1 + mouse.x, 0.05)
 		uniforms.uSphere.value.y = lerp(y, -mouse.y, 0.05)
 
 		// Don't need a camera if camera uniforms aren't required
