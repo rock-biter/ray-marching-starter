@@ -25,7 +25,7 @@ float sMin(float a, float b, float k) {
 // {
 //   return length(p)-s;
 // }
-#include ../chunks/sphere_sdf.frag;
+#include ../sdf/3D/sdSphere.frag;
 
 float GetDist(vec3 p) {
 
