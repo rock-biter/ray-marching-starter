@@ -2,6 +2,8 @@ import './style.css'
 // import sphereSdf from './src/glsl/chunks/sphere_sdf.glsl'
 // console.log(sphereSdf)
 import fragment from './src/glsl/examples/blob_wave.frag'
+import vertex from './src/glsl/chunks/fullscreen.vert'
+import FXAA from './src/glsl/examples/FXAA_base.frag'
 
 import { Renderer, Geometry, Program, Mesh, Vec2, Vec4, Post } from 'ogl'
 
@@ -14,9 +16,9 @@ const lerp = (a, b, x) => {
 	const gl = renderer.gl
 	document.body.appendChild(gl.canvas)
 
-	const post = new Post(gl)
+	const post = new Post(gl),
+		mouse = new Vec2(0)
 
-	const mouse = new Vec2(0)
 	const uniforms = {
 		uTime: { value: 0 },
 		uResolution: { value: new Vec2(window.innerWidth, window.innerHeight) },
@@ -52,74 +54,15 @@ const lerp = (a, b, x) => {
 	// Alternatively, you could use the Triangle class.
 
 	const program = new Program(gl, {
-		vertex: /* glsl */ `
-            attribute vec2 uv;
-            attribute vec2 position;
-
-            varying vec2 vUv;
-
-            void main() {
-                vUv = uv;
-                gl_Position = vec4(position, 0, 1);
-            }
-        `,
-		fragment: fragment,
+		vertex,
+		fragment,
 		uniforms,
 	})
 
 	const mesh = new Mesh(gl, { geometry, program })
 
-	const pass = post.addPass({
-		fragment: /* glsl */ `
-    precision highp float;
-    // Default uniform for previous pass is 'tMap'.
-    // Can change this using the 'textureUniform' property
-    // when adding a pass.
-    uniform sampler2D tMap;
-    uniform vec2 uResolution;
-    varying vec2 vUv;
-    vec4 fxaa(sampler2D tex, vec2 uv, vec2 resolution) {
-        vec2 pixel = vec2(1.) / resolution;
-        vec3 l = vec3(0.299, 0.587, 0.114);
-        float lNW = dot(texture2D(tex, uv + vec2(-1, -1) * pixel).rgb, l);
-        float lNE = dot(texture2D(tex, uv + vec2( 1, -1) * pixel).rgb, l);
-        float lSW = dot(texture2D(tex, uv + vec2(-1,  1) * pixel).rgb, l);
-        float lSE = dot(texture2D(tex, uv + vec2( 1,  1) * pixel).rgb, l);
-        float lM  = dot(texture2D(tex, uv).rgb, l);
-        float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
-        float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
-        
-        vec2 dir = vec2(
-            -((lNW + lNE) - (lSW + lSE)),
-            ((lNW + lSW) - (lNE + lSE))
-        );
-        
-        float dirReduce = max((lNW + lNE + lSW + lSE) * 0.03125, 0.0078125);
-        float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
-        dir = min(vec2(8, 8), max(vec2(-8, -8), dir * rcpDirMin)) * pixel;
-        
-        vec3 rgbA = 0.5 * (
-            texture2D(tex, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
-            texture2D(tex, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
-        vec3 rgbB = rgbA * 0.5 + 0.25 * (
-            texture2D(tex, uv + dir * -0.5).rgb +
-            texture2D(tex, uv + dir * 0.5).rgb);
-        float lB = dot(rgbB, l);
-        return mix(
-            vec4(rgbB, 1),
-            vec4(rgbA, 1),
-            max(sign(lB - lMin), 0.0) * max(sign(lB - lMax), 0.0)
-        );
-    }
-    void main() {
-        vec4 raw = texture2D(tMap, vUv);
-        vec4 aa = fxaa(tMap, vUv, uResolution);
-        // Split screen in half to show side-by-side comparison
-        gl_FragColor = mix(raw, aa, step(0., vUv.x));
-        // Darken left side a tad for clarity
-        // gl_FragColor -= step(vUv.x, 0.) * 0.1;
-    }
-`,
+	post.addPass({
+		fragment: FXAA,
 		uniforms,
 	})
 
