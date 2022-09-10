@@ -21,16 +21,35 @@ mat2 Rot(float a) {
     return mat2(c, -s, s, c);
 }
 
-float sMin(float a, float b, float k) {
-  float h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0);
-  return mix(a, b, h) - k * h * (1.0 - h);
-}
 
 // float sdSphere( vec3 p, float s )
 // {
 //   return length(p)-s;
 // }
 #include ../sdf/3D/sdSphere.frag;
+#include ../chunks/boolean_functions.glsl
+
+float sphDensity( vec3 ro, vec3 rd, vec4 sph, float dbuffer )
+{
+    float ndbuffer = dbuffer/sph.w;
+    vec3  rc = (ro - sph.xyz)/sph.w;
+	
+    float b = dot(rd,rc);
+    float c = dot(rc,rc) - 1.0;
+    float h = b*b - c;
+    if( h<0.0 ) return 0.0;
+    h = sqrt( h );
+    float t1 = -b - h;
+    float t2 = -b + h;
+
+    if( t2<0.0 || t1>ndbuffer ) return 0.0;
+    t1 = max( t1, 0.0 );
+    t2 = min( t2, ndbuffer );
+
+    float i1 = -(c*t1 + b*t1*t1 + t1*t1*t1/3.0);
+    float i2 = -(c*t2 + b*t2*t2 + t2*t2*t2/3.0);
+    return (i2-i1)*(3.0/4.0);
+}
 
 float GetDist(vec3 p) {
 
@@ -42,7 +61,7 @@ float GetDist(vec3 p) {
   float distB = sdSphere(p-sB.xyz, sB.w );
   float planeDist = p.y;
   
-  float d = sMin(sMin(distA,distB, 0.5), planeDist,0.5);
+  float d = opSmoothUnion(opSmoothUnion(distA,distB, 0.5), planeDist,0.5);
   return d;
   
 }
@@ -156,7 +175,15 @@ void main() {
   vec3 p = ro + rd * d;
   float dif = GetLight(p);
 
+  vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
+  float h = sphDensity(ro, rd, sph, 100. );
+
   col *= dif;
+
+  if(h > 0.0) {
+    col = mix(col, vec3(0.2,0.5,1.0), h * 0.5);
+    col = mix(col, 1.15*vec3(1.,0.9,.6), h*h*h);
+  }
 
   // gl_FragColor.rgb = vec3(0.8, 0.7, 1.0) + 0.3 * cos(vUv.xyx + uTime);
   gl_FragColor = vec4(col,1.0);
