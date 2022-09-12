@@ -1,5 +1,12 @@
 precision highp float;
 
+#define MAX_STEPS 100
+#define MAX_DIST 100.
+#define SURF_DIST .01
+
+#define TAU 6.283185
+#define PI 3.141592
+
 uniform float uTime;
 uniform vec2 uResolution;
 uniform vec2 uMouse;
@@ -11,25 +18,10 @@ uniform float uCameraSpeed;
 
 varying vec2 vUv;
 
-#define MAX_STEPS 100
-#define MAX_DIST 100.
-#define SURF_DIST .01
-
-#define TAU 6.283185
-#define PI 3.141592
-
-mat2 Rot(float a) {
-    float s=sin(a), c=cos(a);
-    return mat2(c, -s, s, c);
-}
-
-
-// float sdSphere( vec3 p, float s )
-// {
-//   return length(p)-s;
-// }
 #include ../sdf/3D/sdSphere.frag;
-#include ../chunks/boolean_functions.glsl
+#include ../chunks/boolean_functions.glsl;
+#include ../chunks/transform_functions.glsl;
+
 
 float sphDensity( vec3 ro, vec3 rd, vec4 sph, float dbuffer )
 {
@@ -56,17 +48,26 @@ float sphDensity( vec3 ro, vec3 rd, vec4 sph, float dbuffer )
 float GetDist(vec3 p) {
 
   // sphere x,y,z,r
-  vec4 sA = vec4(1,0,0,1);
-  vec4 sB = vec4(-1,0,0,1);
+  vec4 sA = vec4(1,0.,0,1);
+  vec4 sB = vec4(0,0.5,0.5,1);
+  sA.x += sin(uTime*2.);
+  sA.z += cos(uTime*1.);
+  sA.y += sin(uTime*2.) + 0.5;
+
+  sB.x -= sin(uTime*1.)*3.;
+  sB.z += cos(uTime*2.)*1.5;
+  sB.y += cos(uTime*1.)*2.5 + 1.5;
 
   float distA = sdSphere(p-sA.xyz, sA.w );
   float distB = sdSphere(p-sB.xyz, sB.w );
   float planeDist = p.y;
   
-  float d = opSmoothUnion(opSmoothUnion(distA,distB, 0.5), planeDist,0.5);
+  float d = opSmoothUnion(opSmoothUnion(distA,distB, 0.8), planeDist,0.5);
   return d;
   
 }
+
+#include ../chunks/lights.frag;
 
 float RayMarch(vec3 ro, vec3 rd) {
   float dO = 0.;
@@ -100,45 +101,31 @@ vec3 GetNormal(vec3 p) {
   return normalize(n);
 }
 
-float softshadow( in vec3 ro, in vec3 rd, float k )
-{
 
-  float dO = 0.;
-  float res = 1.0;
+vec4 GetLight(vec3 p, vec3 lightPos, vec4 lightColor) {
+
+  // vec3 lightAPos = vec3(0,5,-3);
+  // vec4 colorA = vec4(1.0,0.,0.,1.);
+
   
-  for(int i=0; i< MAX_STEPS ; i++) {
-      vec3 p = ro + rd * dO;
-      float dS = GetDist(p);
+  // lightPos.xz += vec2(sin(uTime),cos(uTime))*2.;
 
-      if(dS<SURF_DIST)
-        return 0.0;
-      
-      
-      dO += dS;
-      res = min( res, k*dS/dO );
-  
-  }
-  
-  return res;
-
-}
-
-float GetLight(vec3 p) {
-
-  vec3 lightPos = vec3(0,5,6);
-  
-  lightPos.xz += vec2(sin(uTime),cos(uTime))*2.;
   vec3 l = normalize(lightPos-p);
   vec3 n = GetNormal(p);
   
   float dif = clamp( dot(n,l), 0., 1. );
   float d = RayMarch(p+n*SURF_DIST*2.,l);
-  float sha = softshadow(p+n*SURF_DIST*2., l, 8.);
-  
+  float sha = softshadow(p+n*SURF_DIST*2., l, 12.);
+
+  // lightColor.rgb = clamp(lightColor.rgb * (1. - d), 0., 1.);
   // if(d<length(lightPos-p)) dif *= clamp(0.5,1.,sha);
+  // lightColor.rgb -= (d*0.005);
   dif *= sha;
+  float decay = clamp(length(lightPos-p) * 0.1, 0., 1. );
+  lightColor.rgb *= (1. - decay*decay*decay*decay);
   
-  return dif;
+  
+  return vec4(lightColor.rgb * lightColor.a , dif);
 
 }
 
@@ -169,11 +156,10 @@ vec3 getRayOrigin() {
 void main() {
 
   vec2 uv = (gl_FragCoord.xy -0.5*uResolution.xy)/uResolution.y;
-  vec2 m = uMouse.xy / uResolution.xy;
+  // vec2 m = uMouse.xy / uResolution.xy;
   vec3 lookAt = uCameraLookAt;
-  float zoom = 1.;
-
-  vec3 col = vec3(1.,1.,1.);
+  // Basic scene color
+  vec3 col = vec3(.9,.9,.9);
 
   // Ray origin
   vec3 ro = getRayOrigin();
@@ -184,13 +170,29 @@ void main() {
   // Point
   vec3 p = ro + rd * d;
   // Light on point
-  float dif = GetLight(p);
+
+  vec3 blPos = vec3(4,4,-3);
+  blPos.xz += vec2(sin(uTime),cos(uTime))*6.;
+  vec3 brPos = vec3(-3,5,3);
+  brPos.yz += vec2(-sin(uTime),cos(uTime))*4.;
+
+  vec4 light = GetLight(p, brPos,vec4(1.,0.,0.,1.0));
+  vec4 blueLight = GetLight(p, blPos,vec4(0.,0.,1.,1.));
+  float dif = light.w;
+
+  col += light.rgb;
+  col += blueLight.rgb;
+  // col = mix(col, light.rgb,0.9);
+
+  col *= clamp(dif,0.2,1.);
+  col *= clamp(blueLight.w,0.2,1.);
+  col = clamp(col,0.1,1.);
 
   // vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
   // float h = sphDensity(ro, rd, sph, 100. );
 
   // Color opf point
-  col *= dif;
+  // col *= dif;
 
   // if(h > 0.0) {
   //   col = mix(col, vec3(0.2,0.5,1.0), h );

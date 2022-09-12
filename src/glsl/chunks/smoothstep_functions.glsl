@@ -65,7 +65,7 @@ float r_smoothstep( float x, float n )
 // Rational Inverse
 float inv_r_smoothstep( float x, float n )
 {
-  return smoothstep( x, 1.0/n );
+  return r_smoothstep( x, 1.0/n );
 }
 
 // Piecewise Quadratic
@@ -96,8 +96,8 @@ float pwp_smoothstep( float x, float n )
 float inv_pwp_smoothstep( float x, float n )
 {
   return (x<0.5) ? 
-      0.5*pow(2.0*     x, 1.0/P):
-  1.0-0.5*pow(2.0*(1.0-x),1.0/P);
+      0.5*pow(2.0*     x, 1.0/PI):
+  1.0-0.5*pow(2.0*(1.0-x),1.0/PI);
 }
 
 // Trigonometric

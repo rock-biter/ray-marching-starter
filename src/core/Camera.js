@@ -18,11 +18,11 @@ class Camera {
 		uCameraPosition: { value: new Vec3(0, 3, -5) },
 		uCameraRotation: { value: new Vec3(0, 0, 0) },
 		uCameraLookAt: { value: new Vec3(0) },
-		uCameraZoom: { value: 1 },
+		uCameraZoom: { value: 0.5 },
 		uCameraSpeed: { value: 1 },
 	}
 
-	constructor({ speed = 1, inertia = 0.05, zoom = 1 } = {}) {
+	constructor({ speed = 1, inertia = 0.05, zoom = 0.5 } = {}) {
 		this.speed = speed
 		this.inertia = inertia
 		this.zoom = zoom
