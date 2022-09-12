@@ -5,7 +5,9 @@ uniform vec2 uResolution;
 uniform vec2 uMouse;
 uniform vec3 uCameraLookAt;
 uniform vec3 uCameraPosition;
+uniform vec3 uCameraRotation;
 uniform float uCameraZoom;
+uniform float uCameraSpeed;
 
 varying vec2 vUv;
 
@@ -150,7 +152,19 @@ vec3 GetRayDir(vec2 uv, vec3 p, vec3 l, float z) {
     return normalize(i);
 }          
 
-            
+vec3 getRayOrigin() {
+  vec3 ro = uCameraPosition;
+  float cs = uCameraSpeed * 0.001;
+  // camera rotation
+  ro.yz *= Rot( cs * uCameraRotation.y *PI );
+  // ro.yz *= Rot( -m.y*PI );
+  ro.xz *= Rot( cs * uCameraRotation.x*TAU);
+  // ro.xz *= Rot(-m.x*TAU);
+
+  ro.y = max(ro.y, 0.5);
+
+  return ro;
+}           
 
 void main() {
 
@@ -161,23 +175,21 @@ void main() {
 
   vec3 col = vec3(1.,1.,1.);
 
-  // camera position
-  vec3 ro = uCameraPosition;
-  // camera rotation
-  ro.yz *= Rot( -m.y*PI + 0.3 );
-  ro.xz *= Rot(-m.x*TAU + 0.8);
-
-  ro.y = max(ro.y, 0.5);
-
+  // Ray origin
+  vec3 ro = getRayOrigin();
   // Ray direction
   vec3 rd = GetRayDir( uv, ro, lookAt, uCameraZoom );
+  // Ray marching
   float d = RayMarch(ro, rd);
+  // Point
   vec3 p = ro + rd * d;
+  // Light on point
   float dif = GetLight(p);
 
-  vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
+  // vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
   // float h = sphDensity(ro, rd, sph, 100. );
 
+  // Color opf point
   col *= dif;
 
   // if(h > 0.0) {
