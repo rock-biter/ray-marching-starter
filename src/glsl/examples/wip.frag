@@ -176,14 +176,14 @@ void main() {
   float dif = GetLight(p);
 
   vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
-  float h = sphDensity(ro, rd, sph, 100. );
+  // float h = sphDensity(ro, rd, sph, 100. );
 
   col *= dif;
 
-  if(h > 0.0) {
-    col = mix(col, vec3(0.2,0.5,1.0), h * 0.5);
-    col = mix(col, 1.15*vec3(1.,0.9,.6), h*h*h);
-  }
+  // if(h > 0.0) {
+  //   col = mix(col, vec3(0.2,0.5,1.0), h );
+  //   col = mix(col, 1.15*vec3(1.,0.9,.6), h*h*h);
+  // }
 
   // gl_FragColor.rgb = vec3(0.8, 0.7, 1.0) + 0.3 * cos(vUv.xyx + uTime);
   gl_FragColor = vec4(col,1.0);
