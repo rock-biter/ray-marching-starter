@@ -1,7 +1,7 @@
 import './style.css'
 import Scene from './src/core/Scene'
 import { gsap } from 'gsap'
-import fragment from './src/glsl/examples/mix-lights-color.frag'
+import fragment from './src/glsl/examples/wip.frag'
 
 const scene = new Scene({ fragment })
 const { camera } = scene

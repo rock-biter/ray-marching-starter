@@ -176,8 +176,8 @@ void main() {
   vec3 brPos = vec3(-3,5,3);
   brPos.yz += vec2(-sin(uTime),cos(uTime))*3.;
 
-  vec4 light = GetLight(p, brPos,vec4(1.,0.,0.,1.0));
-  vec4 blueLight = GetLight(p, blPos,vec4(0.,0.,1.,1.));
+  vec4 light = GetLight(p, brPos,vec4(1.,0.,0.,1.0),1.);
+  vec4 blueLight = GetLight(p, blPos,vec4(0.,0.,1.,1.),1.);
   float dif = light.w;
 
   col += light.rgb;

@@ -22,6 +22,11 @@ varying vec2 vUv;
 #include ../chunks/boolean_functions.glsl;
 #include ../chunks/transform_functions.glsl;
 
+struct Surface {
+    vec3 ambientColor;
+    vec3 diffuseColor;
+    float signedDistance;
+};
 
 float sphDensity( vec3 ro, vec3 rd, vec4 sph, float dbuffer )
 {
@@ -67,62 +72,101 @@ float GetDist(vec3 p) {
   
 }
 
+Surface SmoothUnion(in Surface surface1, in Surface surface2, in float smoothness) {
+    float interpolation = clamp(0.5 + 0.5 * (surface2.signedDistance - surface1.signedDistance) / smoothness, 0.0, 1.0);
+    return Surface(mix(surface2.ambientColor, surface1.ambientColor, interpolation),// - smoothness * interpolation * (1.0 - interpolation);
+                   mix(surface2.diffuseColor, surface1.diffuseColor, interpolation),// - smoothness * interpolation * (1.0 - interpolation);
+                  //  mix(surface2.specularColor, surface1.specularColor, interpolation),// - smoothness * interpolation * (1.0 - interpolation);
+                  //  mix(surface2.shininess, surface1.shininess, interpolation),// - smoothness * interpolation * (1.0 - interpolation);
+                   mix(surface2.signedDistance, surface1.signedDistance, interpolation) - smoothness * interpolation * (1.0 - interpolation));
+}
+
+Surface mapScene(in vec3 p) {
+
+  vec3 sphPos = vec3(1,.4,0.3);
+  sphPos.y += sin(uTime*2.)*3.;
+  Surface sph = Surface(
+    vec3(0),
+    vec3(1.9,1.9,1.9),
+    sdSphere(p - sphPos, 1. )
+  );
+
+  Surface ground = Surface(vec3(0),vec3(0.5,0.5,0.5), p.y);
+
+  return SmoothUnion(sph,ground,3.);
+
+}
+
 #include ../chunks/lights.frag;
 
-float RayMarch(vec3 ro, vec3 rd) {
+// float RayMarch(vec3 ro, vec3 rd) {
+//   float dO = 0.;
+  
+//   for(int i=0; i< MAX_STEPS; i++) {
+//       vec3 p = ro + rd * dO;
+//       float dS = GetDist(p);
+      
+//       dO += dS;
+//       if(dO > MAX_DIST || dS < SURF_DIST) break;
+      
+  
+//   }
+  
+//   return dO;
+
+// }
+
+Surface RayMarch(vec3 ro, vec3 rd) {
   float dO = 0.;
+  Surface s = Surface(vec3(0),vec3(0.),MAX_DIST+1.);
   
   for(int i=0; i< MAX_STEPS; i++) {
       vec3 p = ro + rd * dO;
-      float dS = GetDist(p);
-      
+      s = mapScene(p);
+      float dS = s.signedDistance;
       dO += dS;
       if(dO > MAX_DIST || dS < SURF_DIST) break;
-      
-  
   }
   
-  return dO;
+  s.signedDistance = dO;
+  return s;
 
 }
 
 
 vec3 GetNormal(vec3 p) {
-  float d = GetDist(p);
+  float d = mapScene(p).signedDistance;
   //trick
   vec2 e = vec2(0.01,0);
   
   vec3 n = vec3(
-      d-GetDist(p-e.xyy),
-      d-GetDist(p-e.yxy),
-      d-GetDist(p-e.yyx)
+      d-mapScene(p-e.xyy).signedDistance,
+      d-mapScene(p-e.yxy).signedDistance,
+      d-mapScene(p-e.yyx).signedDistance
   );
   
   return normalize(n);
 }
 
 
-vec4 GetLight(vec3 p, vec3 lightPos, vec4 lightColor) {
+vec4 GetLight(vec3 p, vec3 lightPos, vec4 lightColor, float decayFactor ) {
 
-  // vec3 lightAPos = vec3(0,5,-3);
-  // vec4 colorA = vec4(1.0,0.,0.,1.);
-
-  
   // lightPos.xz += vec2(sin(uTime),cos(uTime))*2.;
 
   vec3 l = normalize(lightPos-p);
   vec3 n = GetNormal(p);
   
   float dif = clamp( dot(n,l), 0., 1. );
-  float d = RayMarch(p+n*SURF_DIST*2.,l);
-  float sha = softshadow(p+n*SURF_DIST*2., l, 12.);
+  // Surface s = RayMarch(p+n*SURF_DIST*2.,l);
+  // float d = s.signedDistance;
+  float sha = surfaceSoftshadow(p+n*SURF_DIST*2., l, 12.);
 
   // lightColor.rgb = clamp(lightColor.rgb * (1. - d), 0., 1.);
   // if(d<length(lightPos-p)) dif *= clamp(0.5,1.,sha);
   // lightColor.rgb -= (d*0.005);
   dif *= sha;
   float decay = clamp(length(lightPos-p) * 0.1, 0., 1. );
-  lightColor.rgb *= (1. - decay*decay*decay*decay);
+  lightColor.rgb *= (1. - decay*decay*decay*decay*decayFactor);
   
   
   return vec4(lightColor.rgb * lightColor.a , dif);
@@ -159,43 +203,30 @@ void main() {
   // vec2 m = uMouse.xy / uResolution.xy;
   vec3 lookAt = uCameraLookAt;
   // Basic scene color
-  vec3 col = vec3(1.,1.,1.);
+  vec3 col = vec3(.0,.0,.0);
 
   // Ray origin
   vec3 ro = getRayOrigin();
   // Ray direction
   vec3 rd = GetRayDir( uv, ro, lookAt, uCameraZoom );
-  // Ray marching
-  float d = RayMarch(ro, rd);
+  // ray marching surface
+  Surface s = RayMarch(ro, rd);
+  // surface distance
+  float d = s.signedDistance;
+  // surface color
+  col = s.diffuseColor;
   // Point
   vec3 p = ro + rd * d;
   // Light on point
+  vec3 brPos = vec3(3,3.5,-5);
+  brPos.xz += vec2(-sin(uTime),cos(uTime))*3.;
 
-  vec3 blPos = vec3(-4,4,3);
-  blPos.xz += vec2(sin(uTime),cos(uTime))*6.;
-  vec3 brPos = vec3(3,5,3);
-  brPos.yz += vec2(-sin(uTime),cos(uTime))*4.;
-
-  vec4 light = GetLight(p, brPos,vec4(1.,0.,0.,1.0));
-  vec4 blueLight = GetLight(p, blPos,vec4(0.,0.,1.,1.));
+  vec4 light = GetLight(p, brPos,vec4(0.9,.5,.0,0.8),1.);
+  light += GetLight(p, vec3(-10,5,-3),vec4(0.9,.0,.0,1.),1.);
   float dif = light.w;
-
-  col += light.rgb;
-  col += blueLight.rgb;
-  // col = mix(col, light.rgb,0.9);
+  col = mix(col,light.rgb,0.5);
 
   col *= clamp(dif,0.2,1.);
-  col *= clamp(blueLight.w,0.2,1.);
-  col = clamp(col,0.1,1.);
 
-  // vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
-  float h = sphDensity(ro, rd, vec4(blPos,8.), 100. );
-
-  if(h > 0.0) {
-    col = mix(col, vec3(0.,0.,1.)*0.5, h*0.5 );
-    col = mix(col, vec3(0.4,0.4,0.9) * 1.2,h*h*h*h*h*h*h*h);
-  }
-
-  // gl_FragColor.rgb = vec3(0.8, 0.7, 1.0) + 0.3 * cos(vUv.xyx + uTime);
   gl_FragColor = vec4(col,1.0);
 }
