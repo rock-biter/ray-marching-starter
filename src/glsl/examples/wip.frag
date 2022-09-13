@@ -161,11 +161,9 @@ vec4 GetLight(vec3 p, vec3 lightPos, vec4 lightColor, float decayFactor ) {
   // float d = s.signedDistance;
   float sha = surfaceSoftshadow(p+n*SURF_DIST*2., l, 12.);
 
-  // lightColor.rgb = clamp(lightColor.rgb * (1. - d), 0., 1.);
-  // if(d<length(lightPos-p)) dif *= clamp(0.5,1.,sha);
-  // lightColor.rgb -= (d*0.005);
   dif *= sha;
-  float decay = clamp(length(lightPos-p) * 0.1, 0., 1. );
+  // float decay = clamp(sin(length(lightPos-p)*2.)*0.9+0.45, 0., 1. ); 
+  float decay = clamp(length(lightPos-p)*0.1, 0., 1. );
   lightColor.rgb *= (1. - decay*decay*decay*decay*decayFactor);
   
   
@@ -230,3 +228,14 @@ void main() {
 
   gl_FragColor = vec4(col,1.0);
 }
+
+// Surface shader (uses the Phong illumination model):
+// vec3 shadeSurface(in Surface surface, in Ray ray, in vec3 normal) {
+//     vec3 illuminationAmbient = surface.ambientColor * lightColor;
+//     float lambertian = max(0.0, dot(normal, lightDirection));
+//     vec3 illuminationDiffuse = lambertian * surface.diffuseColor * lightColor;
+//     vec3 reflection = reflect(lightDirection, normal);
+//     float specularAngle = max(0.0, dot(reflection, ray.direction));
+//     vec3 illuminationSpecular = clamp(pow(specularAngle, surface.shininess), 0.0, 1.0) * surface.specularColor * lightColor;
+//     return illuminationAmbient + illuminationDiffuse + illuminationSpecular;
+// }
