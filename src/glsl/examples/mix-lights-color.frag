@@ -159,7 +159,7 @@ void main() {
   // vec2 m = uMouse.xy / uResolution.xy;
   vec3 lookAt = uCameraLookAt;
   // Basic scene color
-  vec3 col = vec3(1.,1.,1.);
+  vec3 col = vec3(.9,.9,.9);
 
   // Ray origin
   vec3 ro = getRayOrigin();
@@ -171,10 +171,10 @@ void main() {
   vec3 p = ro + rd * d;
   // Light on point
 
-  vec3 blPos = vec3(-4,4,3);
+  vec3 blPos = vec3(4,4,-3);
   blPos.xz += vec2(sin(uTime),cos(uTime))*6.;
-  vec3 brPos = vec3(3,5,3);
-  brPos.yz += vec2(-sin(uTime),cos(uTime))*4.;
+  vec3 brPos = vec3(-3,5,3);
+  brPos.yz += vec2(-sin(uTime),cos(uTime))*3.;
 
   vec4 light = GetLight(p, brPos,vec4(1.,0.,0.,1.0));
   vec4 blueLight = GetLight(p, blPos,vec4(0.,0.,1.,1.));
@@ -188,12 +188,18 @@ void main() {
   col *= clamp(blueLight.w,0.2,1.);
   col = clamp(col,0.1,1.);
 
-  // vec4 sph = vec4( vec3(0.0,2.,2.), 4.4 );
   float h = sphDensity(ro, rd, vec4(blPos,8.), 100. );
 
   if(h > 0.0) {
     col = mix(col, vec3(0.,0.,1.)*0.5, h*0.5 );
     col = mix(col, vec3(0.4,0.4,0.9) * 1.2,h*h*h*h*h*h*h*h);
+  }
+
+  float hR = sphDensity(ro, rd, vec4(brPos,3.5), 100. );
+
+  if(hR > 0.0) {
+    col = mix(col, vec3(1.,0.,0.)*0.5, hR*0.5 );
+    col = mix(col, vec3(0.9,0.4,0.4) * 1.2,hR*hR*hR*hR*hR*hR*hR*hR);
   }
 
   // gl_FragColor.rgb = vec3(0.8, 0.7, 1.0) + 0.3 * cos(vUv.xyx + uTime);
